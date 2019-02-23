@@ -1,0 +1,115 @@
+import tensorflow as tf
+import numpy as np
+import os
+from matplotlib import pyplot as plt
+
+def get_image_label(file_dir):
+    #把猫狗图片地址以及对应标签装入list
+    Cat=[]
+    Dog=[]
+    Label_cat=[]
+    Label_dog=[]
+
+    for file in os.listdir(file_dir):
+        name=file.split('.')
+        if name[0]=='cat':
+            Cat.append(file_dir+file)
+            Label_cat.append(0)
+        else:
+            Dog.append(file_dir + file)
+            Label_dog.append(1)
+    print("There are %d cat and %d dog" % (len(Cat),len(Dog)))
+
+    #拼接，转置，乱序，返回，列向量
+
+    image_list=np.hstack((Cat,Dog))
+    label_list=np.hstack((Label_cat,Label_dog))
+    temp=np.array([image_list,label_list])
+
+    temp=temp.transpose()
+
+    np.random.shuffle(temp)
+
+    image_list=temp[:,0]
+    label_list=temp[:,1]
+    label_list=[int(i) for i in label_list]
+    np.savetxt('new.csv', temp,fmt='%s', delimiter=',')
+
+
+    return image_list,label_list
+
+
+def get_batch(train_list,image_size,batch_size,capacity,is_random=True):
+    #train_list,即[image_list,
+    #              label_list]
+
+    #1.把图片地址和标签列表载入队列
+    input_queue=tf.train.slice_input_producer(train_list,shuffle=False)
+
+
+    #2.获取图片和标签
+
+    image_train=tf.read_file(input_queue[0])
+    image_train=tf.image.decode_jpeg(image_train,channels=3)
+    image_train=tf.image.resize_images(image_train,[image_size,image_size])
+    image_train=tf.cast(image_train,tf.float32)/255.
+
+    label_train=input_queue[1]
+
+    #3.通过shuffle_batch操作，每次弹出一个批次的图片（四维tensor）和标签
+    if is_random:
+        image_train_batch,label_train_batch=tf.train.shuffle_batch([image_train,label_train],
+                                                                   batch_size=batch_size,
+                                                                   capacity=capacity,
+                                                                   min_after_dequeue=100,
+                                                                   num_threads=2)
+        return image_train_batch,label_train_batch
+
+
+
+
+def get_image_label_fromcsv(file_dir):
+    temp=[]
+    temp=np.loadtxt(file_dir, delimiter=',',dtype=str)
+    image_list = temp[:, 0]
+    label_list = temp[:, 1]
+    label_list = [int(i) for i in label_list]
+    return image_list,label_list
+
+
+
+
+# train_list=get_image_label_fromcsv('new.csv')
+#
+# image_batch,label_batch=get_batch(train_list,208,10,200,is_random=True)
+#
+# with tf.Session() as sess:
+#     # 注意要在sess中开启线程才能够提供batch
+#     coord = tf.train.Coordinator()
+#     threads = tf.train.start_queue_runners(sess=sess, coord=coord)
+#
+#     try:
+#         for step in range(10):
+#             if coord.should_stop():
+#                 break
+#
+#             image_batch, label_batch = sess.run([image_batch, label_batch])
+#             if label_batch[0] == 0:
+#                 label = 'Cat'
+#             else:
+#                 label = 'Dog'
+#             plt.imshow(image_batch[0]), plt.title(label)
+#             plt.show()
+#
+#     except tf.errors.OutOfRangeError:
+#         print('Done.')
+#     finally:
+#         coord.request_stop()
+#
+#     coord.join(threads=threads)
+# sess.close()
+#
+#
+#
+#
+#
