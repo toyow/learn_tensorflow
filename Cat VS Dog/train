@@ -1,0 +1,70 @@
+import tensorflow as tf
+from load_data import *
+from model import *
+import time
+
+
+N_CLASSES=2
+IMG_SIZE=208
+BATCH_SZIE=10
+CAPACITY=200
+MAX_STEP=20000
+LR=1e-4
+LOG_DIR='logs\\'
+IMAGE_LABEL_DIR='new.csv'
+
+def train():
+    #with tf.variable_scope('input') as scope:
+        # x=tf.placeholder(tf.float32,shape=[None,IMG_SIZE,IMG_SIZE,3],name='input_x')
+        # y=tf.placeholder(tf.float32,shape=[None,1],name='input_y')
+
+    train_list = get_image_label_fromcsv(IMAGE_LABEL_DIR)
+
+
+    image_train_batch, label_train_batch = get_batch(train_list, IMG_SIZE, BATCH_SZIE, CAPACITY, is_random=True)
+    train_logits=inference(image_train_batch,N_CLASSES)
+    train_loss=loss(train_logits,label_train_batch)
+    train_acc=accuracy(train_logits,label_train_batch)
+
+    train_op=tf.train.AdamOptimizer(LR).minimize(train_loss)
+
+ #   var_list = tf.trainable_variables()
+#    paras_count = tf.reduce_sum([tf.reduce_prod(v.shape() for v in var_list)])
+
+    saver=tf.train.Saver()
+
+    with tf.Session() as sess:
+        sess.run(tf.global_variables_initializer())
+        #print("参数数目：%d"%sess.run(paras_count),end='\n\n')
+
+        coord=tf.train.Coordinator()
+        threads=tf.train.start_queue_runners(sess=sess,coord=coord)
+
+        s_t=time.time()
+        try:
+            for step in range(MAX_STEP):
+                if coord.should_stop():
+                    break
+               # _,loss_val,acc_val=sess.run([train_op,train_loss,train_acc],feed_dict={x:image_train_batch,y:label_train_batch})
+                _, loss_val, acc_val = sess.run([train_op, train_loss, train_acc])
+                if step%100==0:
+                    runtime=time.time()-s_t
+                    print("step: %d,loss: %f,acc: %.2f%%,time: %.2f,time left: %.2f h"
+                          %(step,loss_val,acc_val*100,runtime,(MAX_STEP-step)*runtime/360000))
+                s_t=time.time()
+
+                if step%500==0 or step==MAX_STEP-1:
+                    checkpoint_path=os.path.join(LOG_DIR,'wdy_model.ckpt')
+                    saver.save(sess,checkpoint_path,global_step=step)
+        except tf.errors.OutOfRangeError:
+            print('Done')
+        finally:
+            coord.request_stop()
+
+        coord.join(threads=threads)
+        sess.close()
+
+
+train()
+
+
