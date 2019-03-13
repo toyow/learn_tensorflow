@@ -1,0 +1,17 @@
+import tensorflow as tf
+#先生成两个行
+grid_x=tf.range(13,dtype=tf.int32)
+grid_y=tf.range(13,dtype=tf.int32)
+#grid_x按行复制，grid_y转化成列向量，按列复制。
+#grid_x:(13,13) grid_y:(13,13)
+grid_x, grid_y = tf.meshgrid(grid_x, grid_y)
+#从左到右从上到下，形成一个二维列向量(169,1)
+x_offset = tf.reshape(grid_x, (-1, 1))
+y_offset = tf.reshape(grid_y, (-1, 1))
+#两列相拼接(169,1)
+xy_offset=tf.concat([x_offset,y_offset],axis=-1)# 0,0 1,0 2,0 3,0
+#reshape成（13,13,1,2）
+xy_offset = tf.cast(tf.reshape(xy_offset, [13, 13, 1, 2]), tf.float32)
+sess=tf.Session()
+a=sess.run(xy_offset)
+print("")
