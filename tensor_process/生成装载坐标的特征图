@@ -1,3 +1,7 @@
+'''
+生成装载自身坐标的特征图
+'''
+
 import tensorflow as tf
 #先生成两个行
 grid_x=tf.range(13,dtype=tf.int32)
